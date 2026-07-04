@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOrderByCode } from "@/lib/data/orders";
 import { formatRupees } from "@/lib/money";
+import { SHOP } from "@/lib/constants";
 import { VegDot } from "@/components/veg-dot";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_STEPS = ["placed", "confirmed", "preparing", "ready", "out_for_delivery", "delivered"] as const;
+const DELIVERY_STEPS = ["placed", "confirmed", "preparing", "ready", "out_for_delivery", "delivered"] as const;
+const TAKEAWAY_STEPS = ["placed", "confirmed", "preparing", "ready"] as const;
 const STATUS_LABEL: Record<string, string> = {
   placed: "Placed",
   confirmed: "Confirmed",
@@ -22,7 +24,10 @@ export default async function OrderPage({ params }: { params: Promise<{ code: st
   const order = (await getOrderByCode(code)) as any;
   if (!order) notFound();
 
-  const currentIdx = Math.max(0, STATUS_STEPS.indexOf(order.status));
+  const isTakeaway = order.fulfilment === "takeaway";
+  const steps = isTakeaway ? TAKEAWAY_STEPS : DELIVERY_STEPS;
+  const stepLabel = (s: string) => (isTakeaway && s === "ready" ? "Ready for pickup" : STATUS_LABEL[s]);
+  const currentIdx = Math.max(0, steps.indexOf(order.status as never));
   const delivery = Array.isArray(order.deliveries) ? order.deliveries[0] : order.deliveries;
 
   return (
@@ -32,16 +37,19 @@ export default async function OrderPage({ params }: { params: Promise<{ code: st
         <p className="mt-1 text-4xl font-black text-brand">#{String(order.token).padStart(2, "0")}</p>
         <p className="mt-1 text-xs text-muted">{order.order_code}</p>
         <p className="mt-2 text-sm">
-          {order.payment_mode === "cash" ? "Pay on delivery" : `Payment: ${order.payment_status}`}
+          {isTakeaway ? "🛍️ Take-away / Dine-in · " : ""}
+          {order.payment_mode === "cash"
+            ? isTakeaway ? "Pay at store" : "Pay on delivery"
+            : `Payment: ${order.payment_status}`}
         </p>
       </div>
 
       {/* Tracking */}
       <ol className="mb-5 flex justify-between rounded-2xl border border-border bg-surface p-4 text-center text-xs">
-        {STATUS_STEPS.map((s, i) => (
+        {steps.map((s, i) => (
           <li key={s} className={i <= currentIdx ? "font-semibold text-brand" : "text-muted"}>
             <div className={`mx-auto mb-1 h-2.5 w-2.5 rounded-full ${i <= currentIdx ? "bg-brand" : "bg-stone-200"}`} />
-            {STATUS_LABEL[s]}
+            {stepLabel(s)}
           </li>
         ))}
       </ol>
@@ -70,11 +78,13 @@ export default async function OrderPage({ params }: { params: Promise<{ code: st
           <div className="flex justify-between text-muted"><span>GST</span><span>{formatRupees(order.gst_paise)}</span></div>
           <div className="mt-1 flex justify-between font-bold"><span>Total</span><span>{formatRupees(order.total_paise)}</span></div>
         </div>
-        {delivery && (
+        {isTakeaway ? (
+          <p className="mt-3 text-xs text-muted">🛍️ Pick up at {SHOP.name} · {SHOP.area}</p>
+        ) : delivery ? (
           <p className="mt-3 text-xs text-muted">
             Delivering to {delivery.dropoff_address || "your location"} · {delivery.distance_km} km away
           </p>
-        )}
+        ) : null}
       </div>
 
       <Link href="/" className="mt-5 block text-center text-sm font-semibold text-brand hover:underline">

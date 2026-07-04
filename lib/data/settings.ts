@@ -32,10 +32,12 @@ export async function getSettings(): Promise<ShopSettings> {
 
   if (error || !data) return FALLBACK;
 
+  // Store location + radius come from .env (SHOP), so switching stores is a
+  // config change with no DB write. Pricing params come from the DB row.
   return {
-    shop_lat: data.shop_lat,
-    shop_lng: data.shop_lng,
-    delivery_radius_km: Number(data.delivery_radius_km),
+    shop_lat: SHOP.lat,
+    shop_lng: SHOP.lng,
+    delivery_radius_km: SHOP.deliveryRadiusKm,
     discount_threshold: data.discount_threshold,
     discount_pct: Number(data.discount_pct),
     gst_pct: Number(data.gst_pct),

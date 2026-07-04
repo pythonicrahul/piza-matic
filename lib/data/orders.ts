@@ -21,7 +21,9 @@ export interface CreateOrderArgs {
   phone: string;
   paymentMode: PaymentMode;
   repriced: RepricedCart;
-  delivery: { lat: number; lng: number; address: string | null; distanceKm: number };
+  fulfilment: "delivery" | "takeaway";
+  // Present only for delivery orders; null/omitted for take-away.
+  delivery: { lat: number; lng: number; address: string | null; distanceKm: number } | null;
 }
 
 export interface CreatedOrder {
@@ -58,12 +60,15 @@ export async function createOrder(args: CreateOrderArgs): Promise<CreatedOrder> 
     p_gst: bill.gst_paise,
     p_total: bill.total_paise,
     p_items: items,
-    p_delivery: {
-      lat: args.delivery.lat,
-      lng: args.delivery.lng,
-      address: args.delivery.address,
-      distance_km: args.delivery.distanceKm,
-    },
+    p_fulfilment: args.fulfilment,
+    p_delivery: args.delivery
+      ? {
+          lat: args.delivery.lat,
+          lng: args.delivery.lng,
+          address: args.delivery.address,
+          distance_km: args.delivery.distanceKm,
+        }
+      : null,
   });
   if (error) throw error;
 
@@ -77,7 +82,7 @@ export async function getOrderByCode(code: string) {
   const { data } = await supabase
     .from("orders")
     .select(
-      `order_code, token, status, payment_mode, payment_status, name, phone,
+      `order_code, token, status, payment_mode, payment_status, name, phone, fulfilment,
        subtotal_paise, discount_paise, gst_paise, total_paise, placed_at,
        order_items ( qty, unit_paise, line_paise, is_veg,
          pizza:pizza_id(name), base:base_id(name),

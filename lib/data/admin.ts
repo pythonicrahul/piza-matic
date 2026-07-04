@@ -76,11 +76,12 @@ export interface KitchenOrder {
   payment_mode: string;
   payment_status: string;
   total_paise: number;
+  fulfilment: string;
   order_items: KitchenItem[];
 }
 
 const KITCHEN_SELECT =
-  "order_code, token, name, status, placed_at, payment_mode, payment_status, total_paise, " +
+  "order_code, token, name, status, placed_at, payment_mode, payment_status, total_paise, fulfilment, " +
   "order_items(qty, pizza:pizza_id(name), base:base_id(name), order_item_toppings(topping:topping_id(name)))";
 
 /** Start of the current IST day as an ISO timestamp. */

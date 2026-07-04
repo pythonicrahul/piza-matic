@@ -18,6 +18,7 @@ interface KOrder {
   payment_mode: string;
   payment_status: string;
   total_paise: number;
+  fulfilment: string;
   order_items: KItem[];
 }
 
@@ -83,7 +84,12 @@ export function KitchenBoard() {
                   <span className="text-2xl font-black text-brand">#{String(o.token).padStart(2, "0")}</span>
                   <span className="text-xs text-muted">{timeLabel(o.placed_at)}</span>
                 </div>
-                <span className="text-sm font-semibold">{o.name || "Guest"}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold">{o.name || "Guest"}</span>
+                  {o.fulfilment === "takeaway" && (
+                    <span className="rounded-full bg-stone-800 px-2 py-0.5 text-[10px] font-bold text-white">🛍️ TAKE-AWAY</span>
+                  )}
+                </div>
                 <ul className="space-y-1 text-sm text-foreground/80">
                   {o.order_items.map((it, i) => (
                     <li key={i}>{itemText(it)}</li>
