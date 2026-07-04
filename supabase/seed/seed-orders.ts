@@ -11,8 +11,39 @@ import { computeBill } from "../../lib/pricing";
 import { DEFAULT_PRICING } from "../../lib/constants";
 import type { CartLine, MenuItemRef } from "../../lib/types";
 
-const N_ORDERS = 45;
+const N_ORDERS = 160;
 const DAYS = 30;
+
+// Realistic demand shape so the forecast model has a pattern to learn:
+// lunch (12–14) + dinner (19–22) peaks, quiet mornings; weekends busier.
+const HOUR_W = [0,0,0,0,0,0,1,2,3,3,3,4, 8,9,6,3,3,4,7,11,12,10,6,3]; // index = IST hour
+const DOW_W = { 0: 1.3, 1: 0.8, 2: 0.8, 3: 0.9, 4: 1.0, 5: 1.4, 6: 1.6 } as Record<number, number>;
+
+function weightedIndex(weights: number[]): number {
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < weights.length; i++) {
+    r -= weights[i];
+    if (r < 0) return i;
+  }
+  return weights.length - 1;
+}
+
+/** Pick an IST datetime in the last DAYS days, biased to peaks + weekends. */
+function sampleWhen(): Date {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const dayOffset = randInt(0, DAYS - 1);
+    const d = new Date(Date.now() - dayOffset * 86400000);
+    const istDow = new Date(d.getTime() + 5.5 * 3600000).getUTCDay();
+    if (Math.random() < DOW_W[istDow] / 1.6) {
+      const hour = weightedIndex(HOUR_W);
+      // build the instant that is `hour:min` IST on that calendar day
+      const istDateStr = new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
+      return new Date(`${istDateStr}T${String(hour).padStart(2, "0")}:${String(randInt(0, 59)).padStart(2, "0")}:00+05:30`);
+    }
+  }
+  return new Date(Date.now() - randInt(0, DAYS - 1) * 86400000);
+}
 
 const CUSTOMERS = [
   { phone: "9811111111", name: "Aarav" },
@@ -43,6 +74,9 @@ async function main() {
   pizzas.forEach((p, i) => {
     signature.set(p.id, [toppings[i % toppings.length], toppings[(i + 3) % toppings.length]]);
   });
+
+  // Idempotent: clear previously-seeded historical orders (cascades to items).
+  await s.from("orders").delete().like("order_code", "PMH-%");
 
   // Ensure customers exist.
   const custIds = new Map<string, string>();
@@ -75,7 +109,7 @@ async function main() {
     }
 
     const bill = computeBill(cart, DEFAULT_PRICING);
-    const placedAt = new Date(Date.now() - randInt(0, DAYS) * 86400000 - randInt(0, 86400) * 1000);
+    const placedAt = sampleWhen();
     const paymentMode = rand(["cash", "card", "upi"]);
     const orderCode = `PMH-${placedAt.getTime()}-${i}`;
 
