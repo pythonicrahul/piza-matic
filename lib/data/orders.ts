@@ -94,6 +94,21 @@ export async function getOrderByCode(code: string) {
   return data;
 }
 
+/** A customer's orders, newest first, for the "My orders" list. */
+export async function getCustomerOrders(customerId: string) {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("orders")
+    .select(
+      `order_code, token, status, payment_mode, payment_status, fulfilment, total_paise, placed_at,
+       order_items ( qty, is_veg, pizza:pizza_id(name) )`,
+    )
+    .eq("customer_id", customerId)
+    .order("placed_at", { ascending: false })
+    .limit(50);
+  return data ?? [];
+}
+
 /** Cash-on-delivery: no gateway, so confirm the order immediately. */
 export async function confirmCashOrder(orderId: string): Promise<void> {
   const supabase = createAdminClient();

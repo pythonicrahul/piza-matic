@@ -77,7 +77,10 @@ export function SiteHeader() {
             </AnimatePresence>
           </Link>
           {session ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <Link href="/orders" className="font-semibold text-brand hover:underline">
+                My orders
+              </Link>
               <span className="hidden text-muted sm:inline">{session.name || session.phone}</span>
               <button onClick={logout} className="font-semibold text-brand hover:underline">
                 Sign out

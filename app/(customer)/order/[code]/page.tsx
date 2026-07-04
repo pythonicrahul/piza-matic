@@ -70,9 +70,10 @@ export default async function OrderPage({ params }: { params: Promise<{ code: st
         ) : null}
       </div>
 
-      <Link href="/" className="mt-5 block text-center text-sm font-semibold text-brand hover:underline">
-        Order again
-      </Link>
+      <div className="mt-5 flex items-center justify-center gap-6 text-sm font-semibold text-brand">
+        <Link href="/orders" className="hover:underline">My orders</Link>
+        <Link href="/" className="hover:underline">Order again</Link>
+      </div>
     </div>
   );
 }
