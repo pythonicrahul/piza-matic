@@ -18,6 +18,13 @@ interface RazorpayResponse {
   razorpay_order_id: string;
   razorpay_signature: string;
 }
+interface SavedAddress {
+  id: string;
+  label: string | null;
+  address: string | null;
+  lat: number;
+  lng: number;
+}
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
   interface Window {
@@ -37,6 +44,10 @@ export default function CheckoutPage() {
   const [geoState, setGeoState] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddrId, setSelectedAddrId] = useState<string>("new");
+  const [label, setLabel] = useState("");
+  const [saveNew, setSaveNew] = useState(true);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -46,7 +57,48 @@ export default function CheckoutPage() {
       });
   }, [router]);
 
+  // Load saved addresses and preselect the most recent, so no re-entry is needed.
+  useEffect(() => {
+    fetch("/api/addresses")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok && d.addresses?.length) {
+          setSavedAddresses(d.addresses);
+          applySaved(d.addresses[0]);
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const inRange = distanceKm !== null && distanceKm <= SHOP.deliveryRadiusKm;
+
+  function applySaved(a: SavedAddress) {
+    setSelectedAddrId(a.id);
+    const dist = Math.round(haversineKm(SHOP.lat, SHOP.lng, a.lat, a.lng) * 100) / 100;
+    setCoords({ lat: a.lat, lng: a.lng });
+    setDistanceKm(dist);
+    setAddress(a.address || "");
+    setGeoState("ok");
+    setAutoNote("");
+    setError(dist > SHOP.deliveryRadiusKm ? `This address is ${dist} km away — outside delivery range.` : "");
+  }
+
+  function selectNew() {
+    setSelectedAddrId("new");
+    setCoords(null);
+    setDistanceKm(null);
+    setAddress("");
+    setGeoState("idle");
+    setError("");
+    setAutoNote("");
+  }
+
+  async function removeSaved(id: string) {
+    await fetch(`/api/addresses?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
+    setSavedAddresses((prev) => prev.filter((a) => a.id !== id));
+    if (selectedAddrId === id) selectNew();
+  }
 
   function captureLocation() {
     setGeoState("loading");
@@ -129,6 +181,15 @@ export default function CheckoutPage() {
     setBusy(true);
     setError("");
     try {
+      // Save a brand-new delivery location for reuse next time.
+      if (fulfilment === "delivery" && selectedAddrId === "new" && saveNew && coords) {
+        await fetch("/api/addresses", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ label: label || null, address: address || null, lat: coords.lat, lng: coords.lng }),
+        }).catch(() => {});
+      }
+
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -205,31 +266,74 @@ export default function CheckoutPage() {
 
         {fulfilment === "delivery" ? (
           <StepSection index={1} title="Delivery location">
-            <motion.button
-              whileTap={scaleTap.whileTap}
-              onClick={captureLocation}
-              className="flex items-center gap-2 rounded-xl border border-brand px-4 py-2 text-sm font-bold text-brand transition-colors hover:bg-brand hover:text-white"
-            >
-              {geoState === "loading" ? (
-                <motion.span animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="inline-block">📍</motion.span>
-              ) : coords ? (
-                <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}>✅</motion.span>
-              ) : (
-                <span>📍</span>
-              )}
-              {geoState === "loading" ? "Locating…" : coords ? "Location captured" : "Use my location"}
-            </motion.button>
+            {savedAddresses.length > 0 && (
+              <div className="mb-3 space-y-2">
+                {savedAddresses.map((a) => (
+                  <div
+                    key={a.id}
+                    className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 ${selectedAddrId === a.id ? "border-brand bg-orange-50" : "border-border"}`}
+                  >
+                    <button type="button" onClick={() => applySaved(a)} className="flex flex-1 items-center gap-2 text-left">
+                      <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${selectedAddrId === a.id ? "border-brand bg-brand" : "border-border"}`} />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold">{a.label || "Saved address"}</span>
+                        {a.address && <span className="block truncate text-xs text-muted">{a.address}</span>}
+                      </span>
+                    </button>
+                    <button type="button" onClick={() => removeSaved(a.id)} className="shrink-0 text-xs text-red-500 hover:underline">Remove</button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={selectNew}
+                  className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left ${selectedAddrId === "new" ? "border-brand bg-orange-50" : "border-border"}`}
+                >
+                  <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${selectedAddrId === "new" ? "border-brand bg-brand" : "border-border"}`} />
+                  <span className="text-sm font-medium">+ Use a new location</span>
+                </button>
+              </div>
+            )}
+
+            {selectedAddrId === "new" && (
+              <>
+                <motion.button
+                  whileTap={scaleTap.whileTap}
+                  onClick={captureLocation}
+                  className="flex items-center gap-2 rounded-xl border border-brand px-4 py-2 text-sm font-bold text-brand transition-colors hover:bg-brand hover:text-white"
+                >
+                  {geoState === "loading" ? (
+                    <motion.span animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="inline-block">📍</motion.span>
+                  ) : coords ? (
+                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}>✅</motion.span>
+                  ) : (
+                    <span>📍</span>
+                  )}
+                  {geoState === "loading" ? "Locating…" : coords ? "Location captured" : "Use my location"}
+                </motion.button>
+                <input
+                  placeholder="Label — Home, Work (optional)"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  className="mt-3 w-full rounded-xl border border-border bg-surface px-4 py-3"
+                />
+                <input
+                  placeholder="Flat / building / landmark (optional)"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3"
+                />
+                <label className="mt-2 flex items-center gap-2 text-xs text-muted">
+                  <input type="checkbox" checked={saveNew} onChange={(e) => setSaveNew(e.target.checked)} className="accent-brand" />
+                  Save this address for next time
+                </label>
+              </>
+            )}
+
             {distanceKm !== null && (
               <p className={`mt-2 text-xs ${inRange ? "text-veg" : "text-red-500"}`}>
                 {distanceKm} km from {SHOP.area} · {inRange ? "within delivery range ✓" : "out of range"}
               </p>
             )}
-            <input
-              placeholder="Flat / building / landmark (optional)"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="mt-3 w-full rounded-xl border border-border bg-surface px-4 py-3"
-            />
           </StepSection>
         ) : (
           <StepSection index={1} title="Pick up at the store">
