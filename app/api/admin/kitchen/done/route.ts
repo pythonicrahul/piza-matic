@@ -10,9 +10,5 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const orderCode = String(body?.orderCode ?? "");
   const ok = await markOrderReady(orderCode);
-
-  // A newly-ready order is dispatchable — try to assign it to a free rider.
-  if (ok) await admin.supabase.rpc("dispatch_deliveries");
-
   return NextResponse.json({ ok });
 }

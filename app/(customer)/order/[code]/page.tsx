@@ -3,18 +3,10 @@ import { notFound } from "next/navigation";
 import { getOrderByCode } from "@/lib/data/orders";
 import { formatRupees } from "@/lib/money";
 import { VegDot } from "@/components/veg-dot";
+import { PizzaThumb } from "@/components/pizza-photo";
+import { OrderConfirmedHeader, OrderTracker } from "@/components/order-status";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_STEPS = ["placed", "confirmed", "preparing", "ready", "out_for_delivery", "delivered"] as const;
-const STATUS_LABEL: Record<string, string> = {
-  placed: "Placed",
-  confirmed: "Confirmed",
-  preparing: "Preparing",
-  ready: "Ready",
-  out_for_delivery: "Out for delivery",
-  delivered: "Delivered",
-};
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export default async function OrderPage({ params }: { params: Promise<{ code: string }> }) {
@@ -22,45 +14,37 @@ export default async function OrderPage({ params }: { params: Promise<{ code: st
   const order = (await getOrderByCode(code)) as any;
   if (!order) notFound();
 
-  const currentIdx = Math.max(0, STATUS_STEPS.indexOf(order.status));
   const delivery = Array.isArray(order.deliveries) ? order.deliveries[0] : order.deliveries;
 
   return (
     <div className="mx-auto max-w-lg">
-      <div className="mb-5 rounded-2xl border border-brand/30 bg-orange-50 p-5 text-center">
-        <p className="text-sm text-brand">Order confirmed 🎉</p>
-        <p className="mt-1 text-4xl font-black text-brand">#{String(order.token).padStart(2, "0")}</p>
-        <p className="mt-1 text-xs text-muted">{order.order_code}</p>
-        <p className="mt-2 text-sm">
-          {order.payment_mode === "cash" ? "Pay on delivery" : `Payment: ${order.payment_status}`}
-        </p>
-      </div>
+      <OrderConfirmedHeader
+        token={order.token}
+        orderCode={order.order_code}
+        paymentLine={order.payment_mode === "cash" ? "Pay on delivery" : `Payment: ${order.payment_status}`}
+      />
 
-      {/* Tracking */}
-      <ol className="mb-5 flex justify-between rounded-2xl border border-border bg-surface p-4 text-center text-xs">
-        {STATUS_STEPS.map((s, i) => (
-          <li key={s} className={i <= currentIdx ? "font-semibold text-brand" : "text-muted"}>
-            <div className={`mx-auto mb-1 h-2.5 w-2.5 rounded-full ${i <= currentIdx ? "bg-brand" : "bg-stone-200"}`} />
-            {STATUS_LABEL[s]}
-          </li>
-        ))}
-      </ol>
+      <OrderTracker status={order.status} />
 
       {/* Items */}
-      <div className="rounded-2xl border border-border bg-surface p-4">
+      <div className="rounded-2xl border border-border bg-surface p-4 shadow-warm-sm">
         <h2 className="mb-3 font-semibold">Your order</h2>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {(order.order_items ?? []).map((it: any, i: number) => (
-            <div key={i} className="flex justify-between text-sm">
-              <span className="flex items-center gap-2">
+            <div key={i} className="flex items-center gap-3 text-sm">
+              <PizzaThumb name={it.pizza?.name ?? "Pizza"} seed={it.pizza?.id ?? String(i)} isVeg={it.is_veg} size={36} />
+              <span className="flex min-w-0 flex-1 items-center gap-2">
                 <VegDot isVeg={it.is_veg} />
-                {it.qty}× {it.pizza?.name}
-                <span className="text-muted">
-                  ({it.base?.name}
-                  {it.order_item_toppings?.length ? ` · ${it.order_item_toppings.map((t: any) => t.topping?.name).join(", ")}` : ""})
+                <span className="truncate">
+                  {it.qty}× {it.pizza?.name}
+                  <span className="text-muted">
+                    {" "}
+                    ({it.base?.name}
+                    {it.order_item_toppings?.length ? ` · ${it.order_item_toppings.map((t: any) => t.topping?.name).join(", ")}` : ""})
+                  </span>
                 </span>
               </span>
-              <span>{formatRupees(it.line_paise)}</span>
+              <span className="shrink-0 font-medium">{formatRupees(it.line_paise)}</span>
             </div>
           ))}
         </div>

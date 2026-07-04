@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { getAnalytics, getOrders, normalizeFilters } from "@/lib/data/admin";
 import { formatRupees } from "@/lib/money";
+import { HourChart } from "@/components/admin/hour-chart";
+import { StatTile, TextTile } from "@/components/admin/stat-tile";
+import { StatusPill } from "@/components/admin/status-pill";
+import { RevenueIcon, OrdersIcon, AovIcon, StarIcon } from "@/components/admin/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +25,6 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   const filters = normalizeFilters(sp);
   const [analytics, orders] = await Promise.all([getAnalytics(filters), getOrders(filters)]);
 
-  const maxHour = Math.max(1, ...analytics.by_hour.map((h) => h.count));
   const csvHref = `/api/admin/orders/csv?${new URLSearchParams(
     Object.entries({ from: sp.from, to: sp.to, payment: sp.payment }).filter(([, v]) => v) as [string, string][],
   ).toString()}`;
@@ -29,7 +32,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-surface p-4">
+      <form method="get" className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-surface p-4 shadow-warm-sm">
         <label className="text-sm">
           <span className="mb-1 block text-xs font-semibold text-muted">From</span>
           <input type="date" name="from" defaultValue={sp.from} className="rounded-lg border border-border px-3 py-2" />
@@ -47,8 +50,8 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
             <option value="upi">UPI</option>
           </select>
         </label>
-        <button className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-brand-dark">Apply</button>
-        <Link href="/admin" className="rounded-lg border border-border px-4 py-2 text-sm font-medium">Reset</Link>
+        <button className="rounded-lg bg-brand-gradient px-4 py-2 text-sm font-bold text-white shadow-warm-sm">Apply</button>
+        <Link href="/admin" className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:border-brand/40">Reset</Link>
         <a href={csvHref} className="ml-auto rounded-lg border border-brand px-4 py-2 text-sm font-bold text-brand hover:bg-brand hover:text-white">
           Export CSV
         </a>
@@ -56,19 +59,20 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
 
       {/* Summary tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile label="Revenue" value={formatRupees(analytics.revenue_paise)} />
-        <Tile label="Orders" value={String(analytics.order_count)} />
-        <Tile label="Avg order value" value={formatRupees(analytics.aov_paise)} />
-        <Tile
+        <StatTile label="Revenue" numericValue={analytics.revenue_paise} format={formatRupees} icon={<RevenueIcon />} />
+        <StatTile label="Orders" numericValue={analytics.order_count} format={(n) => String(Math.round(n))} icon={<OrdersIcon />} />
+        <StatTile label="Avg order value" numericValue={analytics.aov_paise} format={formatRupees} icon={<AovIcon />} />
+        <TextTile
           label="Top pizza"
           value={analytics.top_pizza?.name ?? "—"}
           sub={analytics.top_pizza ? `${analytics.top_pizza.qty} sold` : undefined}
+          icon={<StarIcon />}
         />
       </div>
 
       {/* Busiest hour + histogram */}
-      <div className="rounded-2xl border border-border bg-surface p-4">
-        <div className="mb-3 flex items-baseline justify-between">
+      <div className="rounded-2xl border border-border bg-surface p-4 shadow-warm-sm">
+        <div className="mb-1 flex items-baseline justify-between">
           <h2 className="font-semibold">Orders by hour (IST)</h2>
           {analytics.busiest_hour && (
             <span className="text-sm text-muted">
@@ -77,23 +81,16 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
           )}
         </div>
         {analytics.by_hour.length === 0 ? (
-          <p className="text-sm text-muted">No orders in range.</p>
+          <p className="py-8 text-center text-sm text-muted">No orders in range.</p>
         ) : (
-          <div className="flex items-end gap-1" style={{ height: 120 }}>
-            {analytics.by_hour.map((h) => (
-              <div key={h.hour} className="flex flex-1 flex-col items-center justify-end" title={`${hourLabel(h.hour)}: ${h.count}`}>
-                <div className="w-full rounded-t bg-brand" style={{ height: `${(h.count / maxHour) * 100}%`, minHeight: 2 }} />
-                <span className="mt-1 text-[9px] text-muted">{h.hour}</span>
-              </div>
-            ))}
-          </div>
+          <HourChart data={analytics.by_hour} busiestHour={analytics.busiest_hour?.hour ?? null} />
         )}
       </div>
 
       {/* Orders table */}
-      <div className="overflow-x-auto rounded-2xl border border-border bg-surface">
+      <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-warm-sm">
         <table className="w-full min-w-[640px] text-sm">
-          <thead className="border-b border-border text-left text-xs uppercase text-muted">
+          <thead className="sticky top-0 border-b border-border bg-surface text-left text-xs uppercase text-muted">
             <tr>
               <th className="px-4 py-3">Token</th>
               <th className="px-4 py-3">Time</th>
@@ -105,8 +102,8 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
             </tr>
           </thead>
           <tbody>
-            {orders.map((o) => (
-              <tr key={o.order_code} className="border-b border-border/60 last:border-0">
+            {orders.map((o, i) => (
+              <tr key={o.order_code} className={`border-b border-border/60 last:border-0 hover:bg-background/60 ${i % 2 === 1 ? "bg-background/30" : ""}`}>
                 <td className="px-4 py-3 font-semibold">#{String(o.token).padStart(2, "0")}</td>
                 <td className="px-4 py-3 text-muted">{istTime(o.placed_at)}</td>
                 <td className="px-4 py-3">{o.name || o.phone}</td>
@@ -115,7 +112,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
                   {o.payment_mode}
                   <span className={`ml-1 text-xs ${o.payment_status === "paid" ? "text-veg" : "text-muted"}`}>· {o.payment_status}</span>
                 </td>
-                <td className="px-4 py-3 capitalize">{o.status.replace(/_/g, " ")}</td>
+                <td className="px-4 py-3"><StatusPill status={o.status} /></td>
                 <td className="px-4 py-3 text-right font-medium">{formatRupees(o.total_paise)}</td>
               </tr>
             ))}
@@ -127,16 +124,6 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-function Tile({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-surface p-4">
-      <p className="text-xs font-semibold uppercase text-muted">{label}</p>
-      <p className="mt-1 truncate text-xl font-extrabold">{value}</p>
-      {sub && <p className="text-xs text-muted">{sub}</p>}
     </div>
   );
 }

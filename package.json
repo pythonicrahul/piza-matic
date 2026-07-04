@@ -9,17 +9,18 @@
     "lint": "eslint",
     "test": "vitest run",
     "seed:menu": "tsx supabase/seed/seed-menu.ts",
-    "seed:admin": "tsx supabase/seed/seed-admin.ts",
-    "seed:orders": "tsx supabase/seed/seed-orders.ts"
+    "seed:admin": "tsx supabase/seed/seed-admin.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.0",
+    "framer-motion": "^12.42.2",
     "jose": "^6.2.3",
     "next": "16.2.10",
     "openai": "^6.45.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "recharts": "^3.9.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
