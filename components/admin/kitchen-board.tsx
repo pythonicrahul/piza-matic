@@ -58,6 +58,8 @@ export function KitchenBoard() {
         setPending(d.pending ?? []);
         setDone(d.done ?? []);
       }
+    } catch {
+      // transient network error (e.g. dev restart) — the next poll retries
     } finally {
       setLoading(false);
     }

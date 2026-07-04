@@ -36,6 +36,8 @@ export function RiderConsole() {
         setOnline(Boolean(d.online));
         setCurrent(d.current ?? null);
       }
+    } catch {
+      // transient network error (e.g. dev restart) — the next poll retries
     } finally {
       setLoading(false);
     }

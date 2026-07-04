@@ -4,7 +4,8 @@ import { NextResponse, type NextRequest } from "next/server";
 // Refreshes the Supabase auth session on every /admin and /rider request, and
 // bounces unauthenticated users to the relevant login. Role enforcement (admin
 // vs rider) happens in each area's layout via a profiles lookup.
-export async function middleware(request: NextRequest) {
+// (Next 16 renamed the "middleware" convention to "proxy" — same behaviour.)
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
