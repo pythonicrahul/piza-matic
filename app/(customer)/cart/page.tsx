@@ -100,7 +100,8 @@ export default function CartPage() {
       {bill && (
         <motion.div
           layout
-          className="sticky bottom-4 mt-5 rounded-2xl border border-border bg-surface/90 p-4 shadow-warm-lg backdrop-blur-lg"
+          className="sticky mt-5 rounded-2xl border border-border bg-surface/90 p-4 shadow-warm-lg backdrop-blur-lg"
+          style={{ bottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}
         >
           <Row label="Subtotal" value={formatRupees(bill.subtotal_paise)} />
           {bill.discount_applied && <Row label="Discount (10%)" value={`− ${formatRupees(bill.discount_paise)}`} accent />}

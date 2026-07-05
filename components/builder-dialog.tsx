@@ -44,7 +44,7 @@ export function BuilderDialog({ pizza, bases, toppings, maxToppings, onAdd, onCl
 
   return (
     <motion.div
-      className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
       onClick={onClose}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -78,7 +78,7 @@ export function BuilderDialog({ pizza, bases, toppings, maxToppings, onAdd, onCl
           </div>
         </div>
 
-        <div className="p-5 pt-4">
+        <div className="px-5 pt-4" style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}>
         {/* Base — required */}
         <section className="mb-4">
           <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">Choose a base</h3>
