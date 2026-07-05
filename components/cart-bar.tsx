@@ -15,7 +15,7 @@ export function CartBar() {
   const { lines, count } = useCart();
   const pathname = usePathname();
 
-  const hidden = count === 0 || pathname === "/cart" || pathname === "/checkout";
+  const hidden = count === 0 || pathname === "/cart" || pathname === "/checkout" || pathname === "/chat";
   const itemsTotal = lines.reduce((s, l) => s + lineUnitPaise(l) * l.qty, 0);
 
   return (

@@ -63,7 +63,7 @@ export function validateRecommendation(
   };
 }
 
-function providerConfig() {
+export function providerConfig() {
   if (process.env.AI_PROVIDER === "openrouter") {
     return {
       apiKey: process.env.OPENROUTER_API_KEY,

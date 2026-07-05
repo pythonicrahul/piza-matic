@@ -84,6 +84,13 @@ export const UserIcon = (a: boolean) => (
   </svg>
 );
 
+export const ChatIcon = (a: boolean) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke(a)} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 5.5C4 4.7 4.7 4 5.5 4h13c.8 0 1.5.7 1.5 1.5v8c0 .8-.7 1.5-1.5 1.5H9l-4 4v-4H5.5C4.7 15 4 14.3 4 13.5Z" />
+    <path d="m12 7.4.85 2 2 .85-2 .85L12 13.1l-.85-2-2-.85 2-.85Z" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 export const ScooterIcon = (a: boolean) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke(a)} strokeLinecap="round" strokeLinejoin="round">
     <circle cx="6" cy="18" r="2.2" />
