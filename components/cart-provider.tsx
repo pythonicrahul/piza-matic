@@ -5,6 +5,16 @@ import type { CartItemRef, CartLineUI } from "@/lib/cart-types";
 
 const KEY = "slicematic_cart_v1";
 
+// crypto.randomUUID() only exists in secure contexts (https or localhost). On a
+// plain-IP LAN dev URL (http://192.168.x.x, e.g. a phone) it's undefined, so
+// fall back to a good-enough unique id for cart line keys.
+function uid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `k-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 interface CartCtx {
   lines: CartLineUI[];
   count: number;
@@ -38,7 +48,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [lines, hydrated]);
 
   const add = useCallback((line: Omit<CartLineUI, "key">) => {
-    setLines((prev) => [...prev, { ...line, key: crypto.randomUUID() }]);
+    setLines((prev) => [...prev, { ...line, key: uid() }]);
   }, []);
 
   const setQty = useCallback((key: string, qty: number) => {
