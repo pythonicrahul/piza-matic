@@ -28,14 +28,33 @@ export function validateName(raw: string | null | undefined): Result<string> {
 }
 
 export function validatePhone(raw: string | null | undefined): Result<string> {
-  const phone = (raw ?? "").trim();
-  if (phone === "") {
+  const trimmed = (raw ?? "").trim();
+  if (trimmed === "") {
     return err("Phone number cannot be empty. Enter a 10-digit number starting with 6, 7, 8, or 9.");
   }
-  if (!PHONE_RE.test(phone)) {
+  // Normalize real-world formats: strip everything but digits, then drop a +91
+  // country code or a leading 0 trunk prefix — so "+91 98765 43210",
+  // "98765-43210" and "098765 43210" all resolve to the canonical 10 digits.
+  let digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
+  else if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  if (!PHONE_RE.test(digits)) {
     return err("Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.");
   }
-  return ok(phone);
+  return ok(digits);
+}
+
+// A menu price is stored as integer paise. Cap at ₹1,00,000 as a sanity bound.
+const MAX_PRICE_PAISE = 10_000_000;
+
+/** A menu price in whole paise: an integer with 0 ≤ p ≤ ₹1,00,000. */
+export function validatePricePaise(raw: unknown): Result<number> {
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n)) return err("Enter a valid price.");
+  if (!Number.isInteger(n)) return err("Price must be a whole number of paise.");
+  if (n < 0) return err("Price cannot be negative.");
+  if (n > MAX_PRICE_PAISE) return err("That price looks too high.");
+  return ok(n);
 }
 
 /**

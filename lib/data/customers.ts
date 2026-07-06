@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { validateName, validatePhone } from "@/lib/validators";
 
 export interface Customer {
   id: string;
@@ -28,6 +29,17 @@ export async function getOrCreateCustomer(
   phone: string,
   name?: string | null,
 ): Promise<Customer> {
+  // Defense in depth: never persist an unvalidated phone/name, even if a future
+  // caller forgets to validate first. Phone is normalized to canonical 10 digits.
+  const validPhone = validatePhone(phone);
+  if (!validPhone.ok) throw new Error(validPhone.error);
+  phone = validPhone.value;
+  if (name != null && name.trim() !== "") {
+    const validName = validateName(name);
+    if (!validName.ok) throw new Error(validName.error);
+    name = validName.value;
+  }
+
   const supabase = createAdminClient();
 
   const { data: existing } = await supabase

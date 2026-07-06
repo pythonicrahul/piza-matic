@@ -19,6 +19,7 @@ export default async function AdminDashLayout({ children }: { children: React.Re
               <Link href="/admin" className="hover:text-brand">Dashboard</Link>
               <Link href="/admin/kitchen" className="hover:text-brand">Kitchen</Link>
               <Link href="/admin/deliveries" className="hover:text-brand">Delivery</Link>
+              <Link href="/admin/menu" className="hover:text-brand">Menu</Link>
               <Link href="/admin/forecast" className="hover:text-brand">Forecast</Link>
             </nav>
           </div>

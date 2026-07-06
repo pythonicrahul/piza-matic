@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getOrderByCode } from "@/lib/data/orders";
+import { getOrderByCode, getQueueAhead } from "@/lib/data/orders";
 import { formatRupees } from "@/lib/money";
+import { estimateMinutes, targetIso } from "@/lib/eta";
 import { SHOP } from "@/lib/constants";
 import { VegDot } from "@/components/veg-dot";
 import { PizzaThumb } from "@/components/pizza-photo";
 import { OrderConfirmedHeader, OrderTracker } from "@/components/order-status";
+import { OrderEta } from "@/components/order-eta";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,15 @@ export default async function OrderPage({ params }: { params: Promise<{ code: st
 
   const isTakeaway = order.fulfilment === "takeaway";
   const delivery = Array.isArray(order.deliveries) ? order.deliveries[0] : order.deliveries;
+
+  // Live ETA — only while the order is still in the pipeline.
+  const active = !["delivered", "cancelled"].includes(order.status);
+  let etaTargetIso: string | null = null;
+  if (active) {
+    const distanceKm = isTakeaway ? null : delivery?.distance_km ?? null;
+    const pending = await getQueueAhead(order.placed_at);
+    etaTargetIso = targetIso(order.placed_at, estimateMinutes({ distanceKm, pendingOrders: pending }));
+  }
 
   return (
     <div className="mx-auto max-w-lg">
@@ -32,6 +43,8 @@ export default async function OrderPage({ params }: { params: Promise<{ code: st
       />
 
       <OrderTracker status={order.status} fulfilment={order.fulfilment} />
+
+      {etaTargetIso && <OrderEta targetIso={etaTargetIso} fulfilment={order.fulfilment} />}
 
       {/* Items */}
       <div className="rounded-2xl border border-border bg-surface p-4 shadow-warm-sm">

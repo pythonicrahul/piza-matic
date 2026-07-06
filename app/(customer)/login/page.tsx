@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { PizzaMark } from "@/components/pizza-art";
 import { scaleTap } from "@/lib/motion";
+import { validatePhone } from "@/lib/validators";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,13 +27,17 @@ export default function LoginPage() {
 
   async function requestOtp() {
     setError("");
-    if (!phone.trim()) return setError("Enter your phone number.");
+    // Same validator the server uses — normalizes +91 / spaces and checks format
+    // for instant feedback before we hit the API.
+    const p = validatePhone(phone);
+    if (!p.ok) return setError(p.error);
+    setPhone(p.value); // reflect the normalized 10-digit number back to the user
     setBusy(true);
     try {
       const res = await fetch("/api/auth/otp/request", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: p.value }),
       });
       const data = await res.json();
       if (!data.ok) return setError(data.error);

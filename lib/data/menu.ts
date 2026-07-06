@@ -38,6 +38,22 @@ export async function getMenu(): Promise<Menu> {
   return menu;
 }
 
+/** Every item incl. unavailable ones, grouped for the admin menu editor. */
+export async function getFullMenu(): Promise<Menu> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("menu_items")
+    .select(SELECT)
+    .order("category")
+    .order("sort_order");
+
+  if (error) throw error;
+
+  const menu: Menu = { base: [], pizza: [], topping: [] };
+  for (const row of (data ?? []) as MenuItem[]) menu[row.category].push(row);
+  return menu;
+}
+
 /**
  * A lookup of id → item for every available item, used to re-price a cart
  * server-side and to validate that submitted selections are real + available.

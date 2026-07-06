@@ -76,6 +76,29 @@ export async function createOrder(args: CreateOrderArgs): Promise<CreatedOrder> 
   return { orderId: row.order_id, orderCode: row.order_code, token: row.token };
 }
 
+// Orders still in the pipeline (not delivered/cancelled) — the kitchen queue.
+const ACTIVE_STATUSES = ["placed", "confirmed", "preparing", "ready", "out_for_delivery"];
+// Only count orders from a recent window as "in the kitchen" — an order that's
+// been sitting active for hours is stale/abandoned, not really being cooked.
+const QUEUE_WINDOW_MIN = 90;
+
+/**
+ * This order's position in the kitchen queue: active orders placed within the
+ * last {@link QUEUE_WINDOW_MIN} minutes up to and including this one (it counts
+ * itself while active). Drives the ETA estimate on the tracking page.
+ */
+export async function getQueueAhead(placedAtIso: string): Promise<number> {
+  const supabase = createAdminClient();
+  const since = new Date(new Date(placedAtIso).getTime() - QUEUE_WINDOW_MIN * 60_000).toISOString();
+  const { count } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .in("status", ACTIVE_STATUSES)
+    .gte("placed_at", since)
+    .lte("placed_at", placedAtIso);
+  return count ?? 0;
+}
+
 /** Full order detail for the confirmation / tracking page (public by code). */
 export async function getOrderByCode(code: string) {
   const supabase = createAdminClient();

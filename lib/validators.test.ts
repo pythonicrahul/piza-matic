@@ -5,7 +5,41 @@ import {
   validatePizzaQty,
   validatePayment,
   validateToppings,
+  validatePricePaise,
 } from "./validators";
+
+describe("validatePricePaise (admin menu editing)", () => {
+  it("accepts a valid whole-paise price", () => {
+    const r = validatePricePaise(22900);
+    expect(r.ok && r.value).toBe(22900);
+  });
+
+  it("accepts zero (e.g. a free base)", () => {
+    expect(validatePricePaise(0).ok).toBe(true);
+  });
+
+  it("coerces numeric strings", () => {
+    const r = validatePricePaise("4950");
+    expect(r.ok && r.value).toBe(4950);
+  });
+
+  it("rejects negatives", () => {
+    expect(validatePricePaise(-1).ok).toBe(false);
+  });
+
+  it("rejects non-integers (fractional paise)", () => {
+    expect(validatePricePaise(49.5).ok).toBe(false);
+  });
+
+  it("rejects non-numbers", () => {
+    expect(validatePricePaise("free").ok).toBe(false);
+    expect(validatePricePaise(NaN).ok).toBe(false);
+  });
+
+  it("rejects absurdly high prices", () => {
+    expect(validatePricePaise(10_000_001).ok).toBe(false);
+  });
+});
 
 describe("validateName (required)", () => {
   it("rejects empty / whitespace-only", () => {
@@ -29,6 +63,11 @@ describe("validatePhone", () => {
   it("accepts 10-digit numbers starting 6-9", () => {
     for (const p of ["9876543210", "6000000000", "7123456789", "8123456789"]) {
       expect(validatePhone(p)).toEqual({ ok: true, value: p });
+    }
+  });
+  it("normalizes real-world formats to canonical 10 digits", () => {
+    for (const p of ["+91 98765 43210", "98765-43210", "919876543210", "098765 43210", "+91-98765-43210"]) {
+      expect(validatePhone(p)).toEqual({ ok: true, value: "9876543210" });
     }
   });
   it("rejects bad formats", () => {
